@@ -46,11 +46,11 @@ class MixedWeightedSampler(Sampler):
 
 def build_mixed_dataloader(batch_size=2, num_workers=4, distributed=False, rank=0,
                            world_size=1, ref_mode="headtail", mix_ratio=0.5, seed=0,
-                           stems_dir=None, audio_dirs=None):
+                           stems_dir=None, audio_dirs=None, exclude_sources=()):
     rendered = RenderedStemDataset(stems_dir)
     # Rendered clips are a single take, so head/tail is already the cleanest pairing:
     # identical timbre, different notes. diffclip only helps for real recordings.
-    real = RealAudioDataset(audio_dirs, ref_mode=ref_mode)
+    real = RealAudioDataset(audio_dirs, ref_mode=ref_mode, exclude_sources=exclude_sources)
 
     n_rendered, n_real = len(rendered), len(real)
     if n_rendered == 0 or n_real == 0:

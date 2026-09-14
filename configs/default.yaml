@@ -21,6 +21,9 @@ data:
   # recursively for audio files; the entry name is used to balance the mixture so
   # that every corpus contributes equally regardless of its size.
   real_audio_dirs: []
+  # Sub-directory names skipped inside real_audio_dirs (stem categories that carry no
+  # pitched timbre). Matched case-insensitively against the parent directory of a file.
+  drop_categories: [drums, percussion, vocals, other]
   # Cached Basic Pitch posteriorgrams (see scripts/extract_basic_pitch.py).
   bp_cache_rendered: data/bp_cache/rendered
   bp_cache_real: data/bp_cache/real

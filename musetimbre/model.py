@@ -2,21 +2,21 @@
 
 Architecture
 ------------
-* **Backbone** — Stable Audio 3 Medium (base variant), a rectified-flow DiT operating
+* **Backbone**: Stable Audio 3 Medium (base variant), a rectified-flow DiT operating
   in a latent audio space.  It is loaded once and kept completely frozen, together
   with its t5gemma text conditioner.
-* **Pitch branch** — a 176-channel binary piano roll (88 note-activation + 88 onset
+* **Pitch branch**: a 176-channel binary piano roll (88 note-activation + 88 onset
   channels, ~10.77 frames/s) is encoded by a five-layer 1-D CNN and injected into
   *every* DiT block through a decoupled cross-attention layer with rotary position
   embeddings applied to Q, K and V.  The output projection is zero-initialised, so
   the branch starts as a no-op and the frozen backbone is never disturbed.
-* **Timbre branch** — the audio tower of LAION-CLAP (HTSAT-base) reads the raw
+* **Timbre branch**: the audio tower of LAION-CLAP (HTSAT-base) reads the raw
   44.1 kHz reference clip and produces a single 512-d embedding.  It is fine-tuned
   end to end.  A small MLP lifts the embedding to the DiT width, and a per-block
   zero-initialised linear layer turns it into an AdaLN scale/shift that modulates the
   block output right after the pitch cross-attention.
-* **Guidance** — during training pitch and timbre are dropped independently
-  (both 10%, timbre 20%, pitch 20%), which makes multi-condition classifier-free
+* **Guidance**: during training the conditions are dropped in mutually exclusive
+  draws (both dropped 10%, timbre alone 20%, pitch alone 20%), which makes multi-condition classifier-free
   guidance available at sampling time.
 
 Only the pitch encoder, the pitch cross-attention layers, the timbre projection, the

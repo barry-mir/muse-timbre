@@ -65,7 +65,7 @@ def stem_key(audio_path, root):
     return f"{Path(root).name}__" + "__".join(rel.parts)
 
 
-def scan_real_audio(roots, extensions, scan_cache_dir=None):
+def scan_real_audio(roots, extensions, scan_cache_dir=None, drop_categories=None):
     """Index every recording under ``roots`` into 10 s windows.
 
     Returns a list of ``{"path", "stem_key", "source", "window_idx"}`` entries.
@@ -83,6 +83,7 @@ def scan_real_audio(roots, extensions, scan_cache_dir=None):
     import soundfile as sf
     from concurrent.futures import ThreadPoolExecutor
 
+    drop_categories = {c.lower() for c in (drop_categories or ())}
     files = []
     for root in roots:
         if not root.exists():
@@ -93,6 +94,8 @@ def scan_real_audio(roots, extensions, scan_cache_dir=None):
 
     def windows_of(item):
         root, p = item
+        if p.parent.name.lower() in drop_categories:
+            return []
         try:
             info = sf.info(str(p))
             n_win = int((info.frames / info.samplerate) // WINDOW_SEC)
@@ -122,15 +125,20 @@ class RealAudioDataset(Dataset):
     """Single-instrument recordings indexed as 10 s windows."""
 
     def __init__(self, audio_dirs=None, bp_cache=None, extensions=None,
-                 scan_cache_dir=None, ref_mode="headtail"):
+                 scan_cache_dir=None, ref_mode="headtail", drop_categories=None,
+                 exclude_sources=()):
         cfg = get_config()
         self.audio_dirs = [Path(d) for d in (audio_dirs or cfg.data.real_audio_dirs)]
+        self.audio_dirs = [d for d in self.audio_dirs if d.name not in set(exclude_sources)]
+        self.drop_categories = tuple(cfg.data.drop_categories if drop_categories is None
+                                     else drop_categories)
         self.bp_cache = Path(bp_cache or cfg.data.bp_cache_real)
         self.extensions = list(extensions or cfg.data.audio_extensions)
         self.ref_mode = ref_mode
 
         self.samples = scan_real_audio(self.audio_dirs, self.extensions,
-                                       scan_cache_dir or cfg.data.scan_cache_dir)
+                                       scan_cache_dir or cfg.data.scan_cache_dir,
+                                       drop_categories=self.drop_categories)
         self.stem_to_indices = defaultdict(list)
         for i, s in enumerate(self.samples):
             self.stem_to_indices[s["stem_key"]].append(i)

@@ -126,7 +126,7 @@ def load_model(device="cuda", ckpt=None, sa3_dir=None, clap_ckpt=None, half=True
 
 @torch.no_grad()
 def generate(model, sa3, pitch_roll, reference_wav, device="cuda",
-             lambda_p=2.0, lambda_t=2.0, steps=25, prompt="", lambda_text=0.0, seed=None):
+             lambda_p=2.0, lambda_t=2.0, steps=25, prompt="", lambda_text=1.0, seed=None):
     """Sample one 5 s clip with the given pitch roll and timbre reference."""
     model_dtype = next(sa3.model.parameters()).dtype
     io_channels = sa3.io_channels

@@ -101,6 +101,9 @@ def build_argparser():
                              "window, or a different window of the same recording")
     parser.add_argument("--mix-ratio", type=float, default=0.5,
                         help="fraction of each batch drawn from the rendered corpus")
+    parser.add_argument("--exclude-sources", nargs="*", default=[],
+                        help="directory names under real_audio_dirs to leave out of training, "
+                             "for example the corpus you evaluate on")
     parser.add_argument("--total-steps", type=int, default=None, help="override total steps")
     parser.add_argument("--batch-size", type=int, default=None, help="override per-GPU batch size")
     parser.add_argument("--grad-accum", type=int, default=None,
@@ -186,6 +189,7 @@ def main():
         batch_size=cfg["batch_size"], num_workers=args.num_workers,
         distributed=args.distributed, rank=rank, world_size=world_size,
         ref_mode=args.ref_mode, mix_ratio=args.mix_ratio,
+        exclude_sources=args.exclude_sources,
     )
 
     # Neutral text condition, computed once and reused for every step.
@@ -238,7 +242,8 @@ def main():
         try:
             batch = next(data_iter)
         except StopIteration:
-            dataloader.sampler.set_epoch(step)
+            if hasattr(dataloader.sampler, "set_epoch"):
+                dataloader.sampler.set_epoch(step)
             data_iter = iter(dataloader)
             batch = next(data_iter)
 

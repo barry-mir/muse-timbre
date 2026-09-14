@@ -59,6 +59,7 @@ class DataPaths:
     bp_cache_real: Path
     scan_cache_dir: Path
     audio_extensions: List[str] = field(default_factory=lambda: [".wav", ".flac"])
+    drop_categories: List[str] = field(default_factory=lambda: ["drums", "percussion", "vocals", "other"])
 
 
 @dataclass
@@ -117,6 +118,7 @@ def load_config(path: Optional[str] = None) -> Config:
         scan_cache_dir=_resolve(env("MUSETIMBRE_SCAN_CACHE",
                                     d.get("scan_cache_dir", "data/scan_cache"))),
         audio_extensions=list(d.get("audio_extensions", [".wav", ".flac"])),
+        drop_categories=list(d.get("drop_categories", ["drums", "percussion", "vocals", "other"])),
     )
     render = RenderPaths(
         midi_dir=_resolve(env("MUSETIMBRE_MIDI_DIR", r.get("midi_dir", "data/midi"))),

@@ -2,7 +2,7 @@
 
 Play a phrase on one instrument, hand the model a few seconds of another instrument,
 and get the same notes in that timbre. MuseTimbre adds two lightweight, separately
-controllable conditions — **pitch** and **timbre** — to a frozen text-to-audio
+controllable conditions, **pitch** and **timbre**, to a frozen text-to-audio
 diffusion backbone, so neither condition has to be described in words and the backbone
 itself is never fine-tuned.
 
@@ -12,14 +12,14 @@ itself is never fine-tuned.
   at ~10.77 frames/s) goes through a five-layer 1-D CNN and enters *every* DiT block
   through a decoupled cross-attention layer with rotary embeddings on Q, K and V. The
   output projection is zero-initialised, so the branch starts as a no-op. The roll
-  comes from transcribed audio or straight from a MIDI score — the two are the same
+  comes from transcribed audio or straight from a MIDI score. The two are the same
   representation, which is why the model accepts either at inference.
 - **Timbre.** The audio tower of LAION-CLAP (HTSAT-base) reads the raw 44.1 kHz
   reference clip and returns one 512-d embedding, fine-tuned end to end. A small MLP
   lifts it to the DiT width and a per-block zero-initialised linear layer turns it into
   an AdaLN scale/shift applied right after the pitch cross-attention.
-- **Guidance.** Pitch and timbre are dropped independently during training (both 10%,
-  timbre 20%, pitch 20%), so multi-condition classifier-free guidance is available at
+- **Guidance.** During training the conditions are dropped in mutually exclusive draws
+  (both dropped 10%, timbre alone 20%, pitch alone 20%), so multi-condition classifier-free guidance is available at
   sampling time:
   `v = v_u + λ_p (v_p − v_u) + λ_t (v_t − v_u)`, with λ_p = λ_t = 2 by default.
 
@@ -43,7 +43,7 @@ included in this repository.
 
 | Asset | Where | Notes |
 | --- | --- | --- |
-| Stable Audio 3 Medium, **base** variant | Stability AI on Hugging Face | Needs `model_config.json`, `model.safetensors` and the `t5gemma-b-b-ul2/` directory. Covered by the Stability AI Community License and the Gemma Terms of Use — read and accept them; they restrict commercial use. |
+| Stable Audio 3 Medium, **base** variant | Stability AI on Hugging Face | Needs `model_config.json`, `model.safetensors` and the `t5gemma-b-b-ul2/` directory. Covered by the Stability AI Community License and the Gemma Terms of Use. Read and accept them; they restrict commercial use. |
 | LAION-CLAP **music** checkpoint (HTSAT-base, `music_*.pt`) | LAION-AI/CLAP releases | Used to initialise the timbre encoder. Needed for training *and* inference, because the released weights store the fine-tuned encoder in the same layout. |
 | MuseTimbre weights (`musetimbre_v1.pt`) | project release page | 1.7 GB, trainable modules only (pitch encoder, pitch cross-attention, timbre projection, AdaLN, timbre encoder). |
 
@@ -88,7 +88,7 @@ python -m musetimbre.infer --source source.wav --reference reference.wav --out o
 
 Notes:
 
-- Output is a 5 s clip at 44.1 kHz — the crop length the model was trained on. Render
+- Output is a 5 s clip at 44.1 kHz, the crop length the model was trained on. Render
   longer material one window at a time.
 - `--source` is transcribed with Basic Pitch and thresholded (note ≥ 0.35, onset ≥ 0.50)
   into the same binary roll a MIDI score produces.
@@ -126,7 +126,7 @@ the mixture needs no transcription.
 
 **2. Real recordings.** List one or more directories of single-instrument recordings
 under `data.real_audio_dirs`. Each is scanned recursively, every file is split into
-consecutive 10 s windows, and the directory name is used to balance the mixture — each
+consecutive 10 s windows, and the directory name is used to balance the mixture. Each
 corpus contributes equally regardless of size. Pitch comes from cached Basic Pitch
 posteriorgrams:
 
@@ -157,9 +157,13 @@ Single GPU:
 python -m musetimbre.train --device cuda:0 --name my_run
 ```
 
+Stem sub-directories named in `data.drop_categories` (drums, percussion, vocals, other by
+default) are skipped, and `--exclude-sources DIRNAME ...` leaves whole corpora out, which
+is how to keep an evaluation set out of training.
+
 Useful flags: `--mix-ratio` (rendered fraction), `--ref-mode`, `--total-steps`,
 `--batch-size`, `--grad-accum`, `--resume`. Checkpoints and TensorBoard logs land in
-`<run_dir>/<name>/`. Checkpoints hold the trainable tensors only — the frozen backbone
+`<run_dir>/<name>/`. Checkpoints hold the trainable tensors only. The frozen backbone
 is identical to the pretrained weights every run reloads, so storing it would add ~9 GB
 per checkpoint for nothing.
 
