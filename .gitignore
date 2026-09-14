@@ -1,0 +1,26 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Model assets and checkpoints are downloaded, never committed.
+models/
+runs/
+*.pt
+*.ckpt
+*.safetensors
+
+# Datasets, caches and generated audio.
+data/
+outputs/
+*.wav
+*.flac
+*.mp3
+*.npy
+
+.ipynb_checkpoints/
+.DS_Store

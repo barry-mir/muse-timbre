@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "musetimbre"
+version = "1.0.0"
+description = "Reference-based pitch and timbre control for music generation on a frozen diffusion backbone"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+  {name = "Yuan-Chiao Cheng"},
+  {name = "Zhiyao Duan"},
+]
+
+[project.scripts]
+musetimbre-infer = "musetimbre.infer:main"
+musetimbre-train = "musetimbre.train:main"
+
+[tool.setuptools.packages.find]
+include = ["musetimbre*"]

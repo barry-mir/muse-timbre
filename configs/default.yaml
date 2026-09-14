@@ -1,0 +1,45 @@
+# MuseTimbre configuration.
+#
+# Every path below can also be overridden with an environment variable (see README).
+# Point MUSETIMBRE_CONFIG at a copy of this file to use your own values.
+
+paths:
+  # Stable Audio 3 Medium (base variant). Must contain model_config.json,
+  # model.safetensors and the t5gemma-b-b-ul2/ text-conditioner directory.
+  stable_audio_dir: models/stable-audio-3-medium-base
+  # LAION-CLAP music checkpoint used to initialise the timbre encoder (HTSAT-base).
+  clap_checkpoint: models/clap_music.pt
+  # Released MuseTimbre weights (trainable modules only).
+  model_checkpoint: models/musetimbre_v1.pt
+  # Training runs (checkpoints + tensorboard logs) are written here.
+  run_dir: runs
+
+data:
+  # Stems rendered from MIDI with several soundfonts (see scripts/render_midi.py).
+  rendered_stems_dir: data/rendered_stems
+  # Directories of real single-instrument recordings. Each entry is scanned
+  # recursively for audio files; the entry name is used to balance the mixture so
+  # that every corpus contributes equally regardless of its size.
+  real_audio_dirs: []
+  # Cached Basic Pitch posteriorgrams (see scripts/extract_basic_pitch.py).
+  bp_cache_rendered: data/bp_cache/rendered
+  bp_cache_real: data/bp_cache/real
+  # Cached file listing for the rendered corpus (avoids re-scanning durations).
+  scan_cache_dir: data/scan_cache
+  # Audio file extensions picked up when scanning real_audio_dirs.
+  audio_extensions: [".wav", ".flac", ".ogg", ".mp3"]
+
+render:
+  # Source MIDI corpus for scripts/render_midi.py.
+  midi_dir: data/midi
+  # Directory holding the SoundFont (.sf2) files listed below.
+  soundfont_dir: data/soundfonts
+  soundfonts:
+    - FluidR3_GM.sf2
+    - MuseScore_General.sf2
+    - SGM-v2.01.sf2
+    - Arachno.sf2
+    - GeneralUser-GS-v1.471.sf2
+    - Musyng-Kite.sf2
+    - TimGM6mb.sf2
+  output_dir: data/rendered_stems

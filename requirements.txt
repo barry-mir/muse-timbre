@@ -1,0 +1,25 @@
+# Core
+torch==2.10.0
+torchaudio==2.10.0
+numpy==1.26.4
+
+# Backbone
+stable-audio-tools==0.0.20
+safetensors>=0.4.0
+transformers>=4.45.0
+sentencepiece>=0.1.99
+
+# Timbre encoder
+laion-clap==1.1.7
+
+# Pitch conditioning
+basic-pitch==0.4.0
+pretty_midi==0.2.11
+
+# Audio I/O and features
+librosa==0.10.2.post1
+soundfile>=0.12.1
+
+# Training utilities
+tensorboard>=2.15
+PyYAML>=6.0
