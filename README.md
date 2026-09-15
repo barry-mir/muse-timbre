@@ -1,5 +1,7 @@
 # MuseTimbre
 
+Audio examples: https://barry-mir.github.io/muse-timbre-demo/ (source: https://github.com/barry-mir/muse-timbre-demo)
+
 Play a phrase on one instrument, hand the model a few seconds of another instrument,
 and get the same notes in that timbre. MuseTimbre adds two lightweight, separately
 controllable conditions, **pitch** and **timbre**, to a frozen text-to-audio
