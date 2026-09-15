@@ -49,9 +49,9 @@ class Paths:
     stable_audio_dir: Path
     clap_checkpoint: Path
     model_checkpoint: Path
+    run_dir: Path
     hf_repo: str = "barry-mir/muse-timbre"
     hf_filename: str = "musetimbre_v1.pt"
-    run_dir: Path
 
 
 @dataclass
