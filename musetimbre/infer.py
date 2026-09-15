@@ -23,6 +23,7 @@ Examples::
 
 import argparse
 import json
+from pathlib import Path
 import os
 
 import librosa
@@ -90,6 +91,23 @@ def pitch_roll_from_midi(midi_path, start_sec=0.0, duration=DURATION):
 
 # ------------------------------------------------------------------ model setup
 
+def resolve_checkpoint(path, conf=None):
+    """Return a local path to the MuseTimbre weights, downloading them from the Hugging Face
+    model repo in the config when the file is not present yet."""
+    path = Path(path)
+    if path.exists():
+        return str(path)
+    conf = conf or get_config()
+    from huggingface_hub import hf_hub_download
+    print(f"{path} not found; downloading {conf.paths.hf_filename} from {conf.paths.hf_repo}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    got = hf_hub_download(repo_id=conf.paths.hf_repo, filename=conf.paths.hf_filename,
+                          local_dir=str(path.parent))
+    if Path(got).name != path.name:
+        Path(got).rename(path)
+    return str(path)
+
+
 def load_model(device="cuda", ckpt=None, sa3_dir=None, clap_ckpt=None, half=True):
     """Build the model and load the released weights. Returns ``(model, sa3)``."""
     from stable_audio_tools.models.factory import create_model_from_config
@@ -98,7 +116,7 @@ def load_model(device="cuda", ckpt=None, sa3_dir=None, clap_ckpt=None, half=True
 
     conf = get_config()
     sa3_dir = str(sa3_dir or conf.paths.stable_audio_dir)
-    ckpt = str(ckpt or conf.paths.model_checkpoint)
+    ckpt = resolve_checkpoint(ckpt or conf.paths.model_checkpoint, conf)
     clap_ckpt = clap_ckpt or conf.paths.clap_checkpoint
 
     with open(f"{sa3_dir}/model_config.json") as f:

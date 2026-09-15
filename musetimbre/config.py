@@ -11,6 +11,7 @@ Environment variable                    Overrides
 ``MUSETIMBRE_SA3_DIR``                  ``paths.stable_audio_dir``
 ``MUSETIMBRE_CLAP_CKPT``                ``paths.clap_checkpoint``
 ``MUSETIMBRE_CKPT``                     ``paths.model_checkpoint``
+``MUSETIMBRE_HF_REPO``                  ``paths.hf_repo``
 ``MUSETIMBRE_RUN_DIR``                  ``paths.run_dir``
 ``MUSETIMBRE_RENDERED_DIR``             ``data.rendered_stems_dir``
 ``MUSETIMBRE_REAL_DIRS``                ``data.real_audio_dirs`` (``:``-separated)
@@ -48,6 +49,8 @@ class Paths:
     stable_audio_dir: Path
     clap_checkpoint: Path
     model_checkpoint: Path
+    hf_repo: str = "barry-mir/muse-timbre"
+    hf_filename: str = "musetimbre_v1.pt"
     run_dir: Path
 
 
@@ -106,6 +109,8 @@ def load_config(path: Optional[str] = None) -> Config:
         model_checkpoint=_resolve(env("MUSETIMBRE_CKPT",
                                       p.get("model_checkpoint", "models/musetimbre_v1.pt"))),
         run_dir=_resolve(env("MUSETIMBRE_RUN_DIR", p.get("run_dir", "runs"))),
+        hf_repo=env("MUSETIMBRE_HF_REPO", p.get("hf_repo", "barry-mir/muse-timbre")),
+        hf_filename=p.get("hf_filename", "musetimbre_v1.pt"),
     )
     data = DataPaths(
         rendered_stems_dir=_resolve(env("MUSETIMBRE_RENDERED_DIR",

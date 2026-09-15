@@ -20,6 +20,9 @@ pretty_midi==0.2.11
 librosa==0.10.2.post1
 soundfile>=0.12.1
 
+# Weight download
+huggingface_hub>=0.24
+
 # Training utilities
 tensorboard>=2.15
 PyYAML>=6.0

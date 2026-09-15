@@ -47,7 +47,7 @@ included in this repository.
 | --- | --- | --- |
 | Stable Audio 3 Medium, **base** variant | Stability AI on Hugging Face | Needs `model_config.json`, `model.safetensors` and the `t5gemma-b-b-ul2/` directory. Covered by the Stability AI Community License and the Gemma Terms of Use. Read and accept them; they restrict commercial use. |
 | LAION-CLAP **music** checkpoint (HTSAT-base, `music_*.pt`) | LAION-AI/CLAP releases | Used to initialise the timbre encoder. Needed for training *and* inference, because the released weights store the fine-tuned encoder in the same layout. |
-| MuseTimbre weights (`musetimbre_v1.pt`) | project release page | 1.7 GB, trainable modules only (pitch encoder, pitch cross-attention, timbre projection, AdaLN, timbre encoder). |
+| MuseTimbre weights (`musetimbre_v1.pt`) | [barry-mir/muse-timbre on Hugging Face](https://huggingface.co/barry-mir/muse-timbre) | 1.7 GB, trainable modules only (pitch encoder, pitch cross-attention, timbre projection, AdaLN, timbre encoder). Downloaded automatically on first inference if `paths.model_checkpoint` does not exist. |
 
 ## Configuration
 

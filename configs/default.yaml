@@ -9,8 +9,11 @@ paths:
   stable_audio_dir: models/stable-audio-3-medium-base
   # LAION-CLAP music checkpoint used to initialise the timbre encoder (HTSAT-base).
   clap_checkpoint: models/clap_music.pt
-  # Released MuseTimbre weights (trainable modules only).
+  # Released MuseTimbre weights (trainable modules only). If the file is missing it is
+  # downloaded from the Hugging Face model repo below on first use.
   model_checkpoint: models/musetimbre_v1.pt
+  hf_repo: barry-mir/muse-timbre
+  hf_filename: musetimbre_v1.pt
   # Training runs (checkpoints + tensorboard logs) are written here.
   run_dir: runs
 
