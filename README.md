@@ -1,5 +1,6 @@
 # MuseTimbre
 
+Paper: https://arxiv.org/abs/2609.30548
 Audio examples: https://barry-mir.github.io/muse-timbre-demo/ (source: https://github.com/barry-mir/muse-timbre-demo)
 
 Play a phrase on one instrument, hand the model a few seconds of another instrument,
@@ -201,11 +202,11 @@ scripts/
 ## Citation
 
 ```bibtex
-@inproceedings{cheng2027musetimbre,
-  title     = {MuseTimbre: Reference-Based Timbre Control for Music Generation},
-  author    = {Cheng, Yuan-Chiao and Duan, Zhiyao},
-  booktitle = {IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)},
-  year      = {2027}
+@article{cheng2026musetimbre,
+  title   = {MuseTimbre: Zero-Shot Timbre Transfer by Controlling a Frozen Music Generator},
+  author  = {Cheng, Yuan-Chiao and Duan, Zhiyao},
+  journal = {arXiv preprint arXiv:2609.30548},
+  year    = {2026}
 }
 ```
 
