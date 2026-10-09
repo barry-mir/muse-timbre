@@ -1,32 +1,44 @@
-# MuseTimbre
+# MuseTimbre: Zero-Shot Timbre Transfer by Controlling a Frozen Music Generator
 
-Paper: https://arxiv.org/abs/2609.30548
-Audio examples: https://barry-mir.github.io/muse-timbre-demo/ (source: https://github.com/barry-mir/muse-timbre-demo)
+**Yuan-Chiao Cheng, Zhiyao Duan**
 
-Play a phrase on one instrument, hand the model a few seconds of another instrument,
-and get the same notes in that timbre. MuseTimbre adds two lightweight, separately
-controllable conditions, **pitch** and **timbre**, to a frozen text-to-audio
-diffusion backbone, so neither condition has to be described in words and the backbone
-itself is never fine-tuned.
+The official implementation of the paper *"MuseTimbre: Zero-Shot Timbre Transfer by
+Controlling a Frozen Music Generator"*.
 
-- **Backbone.** Stable Audio 3 Medium (base variant), a rectified-flow DiT over a
-  latent audio space, together with its t5gemma text conditioner. Completely frozen.
-- **Pitch.** A 176-channel binary piano roll (88 note-activation + 88 onset channels
-  at ~10.77 frames/s) goes through a five-layer 1-D CNN and enters *every* DiT block
-  through a decoupled cross-attention layer with rotary embeddings on Q, K and V. The
-  output projection is zero-initialised, so the branch starts as a no-op. The roll
-  comes from transcribed audio or straight from a MIDI score. The two are the same
-  representation, which is why the model accepts either at inference.
-- **Timbre.** The audio tower of LAION-CLAP (HTSAT-base) reads the raw 44.1 kHz
-  reference clip and returns one 512-d embedding, fine-tuned end to end. A small MLP
-  lifts it to the DiT width and a per-block zero-initialised linear layer turns it into
-  an AdaLN scale/shift applied right after the pitch cross-attention.
-- **Guidance.** During training the conditions are dropped in mutually exclusive draws
-  (both dropped 10%, timbre alone 20%, pitch alone 20%), so multi-condition classifier-free guidance is available at
-  sampling time:
-  `v = v_u + λ_p (v_p − v_u) + λ_t (v_t − v_u)`, with λ_p = λ_t = 2 by default.
+[**Paper**](https://arxiv.org/abs/2609.30548) &nbsp;|&nbsp;
+[**Demo**](https://barry-mir.github.io/muse-timbre-demo/) &nbsp;|&nbsp;
+[**Weights**](https://huggingface.co/barry-mir/muse-timbre)
 
-Only ~420 M parameters are trained; the backbone's ~2.3 B stay untouched.
+[![arXiv](https://img.shields.io/badge/arXiv-2609.30548-b31b1b)](https://arxiv.org/abs/2609.30548)
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20weights-muse--timbre-yellow)](https://huggingface.co/barry-mir/muse-timbre)
+[![Code License: MIT](https://img.shields.io/badge/code%20license-MIT-blue)](https://github.com/barry-mir/muse-timbre/blob/main/LICENSE)
+
+MuseTimbre performs instrument timbre transfer from an audio reference: it plays the
+notes of a source recording, or of a MIDI score, in the timbre of a reference clip.
+Instead of training a dedicated generator, it attaches two plug-in control modules to a
+frozen text-to-music model, Stable Audio 3 Medium.
+
+<p align="center">
+  <img src="assets/fig1_system.png" alt="MuseTimbre system overview" width="100%">
+</p>
+
+* **Pitch module.** Basic Pitch transcribes the source into a 176-channel binary piano
+  roll (88 note + 88 onset channels at ~10.77 frames/s); a MIDI score gives the same
+  roll directly. A 1-D CNN encodes it, and the features enter every DiT block through a
+  decoupled cross-attention layer with rotary embeddings, behind a zero-initialized gate.
+* **Timbre module.** The audio branch of LAION-CLAP (HTSAT-base) maps the reference clip
+  to one time-invariant 512-d embedding, which modulates every DiT block through
+  zero-initialized adaptive layer normalization (AdaLN). The encoder is fine-tuned end to
+  end, which also makes it a pitch-robust timbre encoder.
+* **Training.** During training the reference is a different crop of the same recording
+  as the target, so it shares the instrument but not the notes. The backbone, its
+  autoencoder, and its text conditioner stay frozen; about 420 M parameters are trained.
+* **Inference.** Multi-condition classifier-free guidance,
+  `v = v_u + λ_p (v_p − v_u) + λ_t (v_t − v_u)` with λ_p = λ_t = 2, and 25 Euler steps
+  (about one second for a 5 s clip on an RTX 5090). The backbone's original text control
+  still works on top of the transferred timbre.
+
+---
 
 ## Install
 
@@ -39,6 +51,8 @@ pip install -e .                         # optional; or just run from the repo r
 `scripts/render_midi.py` additionally needs **fluidsynth** (`apt install fluidsynth`
 or `conda install -c conda-forge fluidsynth`). Nothing else in the repo requires it.
 
+---
+
 ## Assets to download
 
 Place these anywhere and point the config at them (see below). None of them are
@@ -49,6 +63,8 @@ included in this repository.
 | Stable Audio 3 Medium, **base** variant | Stability AI on Hugging Face | Needs `model_config.json`, `model.safetensors` and the `t5gemma-b-b-ul2/` directory. Covered by the Stability AI Community License and the Gemma Terms of Use. Read and accept them; they restrict commercial use. |
 | LAION-CLAP **music** checkpoint (HTSAT-base, `music_*.pt`) | LAION-AI/CLAP releases | Used to initialise the timbre encoder. Needed for training *and* inference, because the released weights store the fine-tuned encoder in the same layout. |
 | MuseTimbre weights (`musetimbre_v1.pt`) | [barry-mir/muse-timbre on Hugging Face](https://huggingface.co/barry-mir/muse-timbre) | 1.7 GB, trainable modules only (pitch encoder, pitch cross-attention, timbre projection, AdaLN, timbre encoder). Downloaded automatically on first inference if `paths.model_checkpoint` does not exist. |
+
+---
 
 ## Configuration
 
@@ -69,6 +85,8 @@ against the repository root, so the defaults work once assets sit under `models/
 | `MUSETIMBRE_BP_CACHE_RENDERED` / `MUSETIMBRE_BP_CACHE_REAL` | the posteriorgram caches |
 | `MUSETIMBRE_SCAN_CACHE` | `data.scan_cache_dir` |
 | `MUSETIMBRE_MIDI_DIR`, `MUSETIMBRE_SOUNDFONT_DIR`, `MUSETIMBRE_RENDER_OUT` | the `render:` section |
+
+---
 
 ## Inference
 
@@ -111,6 +129,8 @@ roll = pitch_roll_from_audio(load_audio("source.wav"))
 audio = generate(model, sa3, roll, reference, device="cuda:0", lambda_p=2, lambda_t=2)
 ```
 
+---
+
 ## Data preparation
 
 Training draws every batch from a mixture of two corpora.
@@ -142,6 +162,8 @@ Within a 10 s window the loader takes two disjoint 5 s crops: the louder one is 
 target and the other is the timbre reference, so the reference shares the instrument
 but none of the notes. `--ref-mode diffclip` goes further and draws the reference from a
 different window of the same recording.
+
+---
 
 ## Training
 
@@ -178,6 +200,8 @@ python scripts/export_weights.py \
     --out models/musetimbre_v1.pt
 ```
 
+---
+
 ## Repository layout
 
 ```
@@ -199,18 +223,29 @@ scripts/
   export_weights.py       training checkpoint -> release weights
 ```
 
+---
+
 ## Citation
 
 ```bibtex
 @article{cheng2026musetimbre,
-  title   = {MuseTimbre: Zero-Shot Timbre Transfer by Controlling a Frozen Music Generator},
-  author  = {Cheng, Yuan-Chiao and Duan, Zhiyao},
-  journal = {arXiv preprint arXiv:2609.30548},
-  year    = {2026}
+  title         = {{MuseTimbre}: Zero-Shot Timbre Transfer by Controlling a Frozen
+                   Music Generator},
+  author        = {Cheng, Yuan-Chiao and Duan, Zhiyao},
+  journal       = {arXiv preprint arXiv:2609.30548},
+  year          = {2026},
+  eprint        = {2609.30548},
+  archivePrefix = {arXiv},
+  primaryClass  = {eess.AS},
 }
 ```
 
+---
+
 ## License
 
-MIT for the code in this repository (see [LICENSE](LICENSE)). The Stable Audio 3 and
-LAION-CLAP weights carry their own licenses and are not covered by it.
+- **Code** (this repository): [MIT](LICENSE).
+- **Weights** ([Hugging Face](https://huggingface.co/barry-mir/muse-timbre)): MIT. Running
+  them also requires the Stable Audio 3 Medium backbone and the LAION-CLAP checkpoint,
+  which carry their own licenses (the Stability AI Community License restricts commercial
+  use).
