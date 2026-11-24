@@ -47,10 +47,32 @@ class MixedWeightedSampler(Sampler):
 def build_mixed_dataloader(batch_size=2, num_workers=4, distributed=False, rank=0,
                            world_size=1, ref_mode="headtail", mix_ratio=0.5, seed=0,
                            stems_dir=None, audio_dirs=None, exclude_sources=()):
+    import os
+    if os.environ.get("MUSETIMBRE_REAL_MANIFEST"):
+        # Real recordings listed in a manifest, pitch from MuScriptor notes.
+        from musetimbre.data_notes import RealNotesDataset
+        real = RealNotesDataset(ref_mode=ref_mode)
+    else:
+        real = RealAudioDataset(audio_dirs, ref_mode=ref_mode, exclude_sources=exclude_sources)
+
+    if mix_ratio == 0:
+        # Real data only: no rendered corpus is built or sampled.
+        counts = {}
+        for s in real.source_of:
+            counts[s] = counts.get(s, 0) + 1
+        weights = [1.0 / (len(counts) * counts[s]) for s in real.source_of]
+        if rank == 0:
+            print(f"[real-only] {len(real)} windows across {len(counts)} sources {counts} "
+                  f"(equal mass per source)", flush=True)
+        sampler = MixedWeightedSampler(weights, rank=rank, world_size=world_size, seed=seed,
+                                       num_samples=len(real) // max(1, world_size))
+        return DataLoader(real, batch_size=batch_size, sampler=sampler,
+                          num_workers=num_workers, pin_memory=True, drop_last=True,
+                          persistent_workers=(num_workers > 0))
+
     rendered = RenderedStemDataset(stems_dir)
     # Rendered clips are a single take, so head/tail is already the cleanest pairing:
     # identical timbre, different notes. diffclip only helps for real recordings.
-    real = RealAudioDataset(audio_dirs, ref_mode=ref_mode, exclude_sources=exclude_sources)
 
     n_rendered, n_real = len(rendered), len(real)
     if n_rendered == 0 or n_real == 0:

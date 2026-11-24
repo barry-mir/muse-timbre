@@ -121,6 +121,8 @@ def load_model(device="cuda", ckpt=None, sa3_dir=None, clap_ckpt=None, half=True
 
     with open(f"{sa3_dir}/model_config.json") as f:
         model_config = json.load(f)
+    from musetimbre.model import localize_text_conditioner
+    model_config = localize_text_conditioner(model_config, sa3_dir)
     sa3 = create_model_from_config(model_config)
     sd = load_ckpt_state_dict(f"{sa3_dir}/model.safetensors")
     sa3.load_state_dict(sd, strict=False)

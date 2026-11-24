@@ -198,8 +198,56 @@ class CLAPTimbreEncoder(nn.Module):
         return self.clap.get_audio_embedding_from_data(x=w48, use_tensor=True)
 
 
+class CLAP2TimbreEncoder(nn.Module):
+    """Frozen LAION CLAP2 (OpenCLIP, NaFlex audio tower) as the timbre encoder.
+
+    Unlike :class:`CLAPTimbreEncoder` nothing here is trained: the audio and text towers
+    stay at their pretrained weights, so the timbre condition lives in CLAP2's joint
+    audio-text space and a text query (``encode_text``) can stand in for a reference
+    clip at inference.  Embeddings are L2-normalised, as CLAP2 is trained.
+    """
+
+    def __init__(self, model_dir, device="cuda"):
+        super().__init__()
+        self._device = device
+        import open_clip
+        model, preprocess = open_clip.create_model_from_pretrained(f"local-dir:{model_dir}")
+        self.clap = model.to(device).eval()
+        self.clap.requires_grad_(False)
+        self.tokenizer = open_clip.get_tokenizer(f"local-dir:{model_dir}")
+        self.patchify = preprocess()            # (waveform, sr) -> {patches, patch_coord, patch_valid}
+        self.output_dim = int(self.clap.text_projection.shape[-1]) if hasattr(self.clap, "text_projection") \
+            and isinstance(self.clap.text_projection, torch.Tensor) else None
+        if self.output_dim is None:
+            with torch.no_grad():
+                self.output_dim = int(self.encode_text(["A piano plays."]).shape[-1])
+
+    def train(self, mode=True):                 # frozen: never switch the towers to train mode
+        return super().train(False)
+
+    @torch.no_grad()
+    def forward_cls(self, wav_44k):
+        """wav_44k: (B, T) at 44.1 kHz -> (B, D) normalised audio embedding (no grad)."""
+        items = [self.patchify((w[None].float().cpu(), 44100)) for w in wav_44k]
+        batch = {k: torch.stack([it[k] for it in items]).to(self._device) for k in items[0]}
+        return self.clap.encode_audio(batch, normalize=True).float()
+
+    @torch.no_grad()
+    def encode_text(self, texts):
+        """list of English captions -> (B, D) normalised text embedding."""
+        tok = self.tokenizer(list(texts)).to(self._device)
+        return self.clap.encode_text(tok, normalize=True).float()
+
+
 def load_clap_timbre_encoder(ckpt=None, device="cuda"):
-    """Build the timbre encoder, initialised from the LAION-CLAP music checkpoint."""
+    """Build the timbre encoder.
+
+    ``MUSETIMBRE_TIMBRE_ENCODER=clap2`` selects the frozen CLAP2 encoder, with the model
+    directory taken from ``MUSETIMBRE_CLAP2_DIR``; otherwise the original fine-tunable
+    LAION-CLAP music encoder is built from ``ckpt``.
+    """
+    if os.environ.get("MUSETIMBRE_TIMBRE_ENCODER", "").lower() == "clap2":
+        return CLAP2TimbreEncoder(os.environ["MUSETIMBRE_CLAP2_DIR"], device=device)
     if ckpt is None:
         ckpt = os.environ.get("MUSETIMBRE_CLAP_CKPT")
     if ckpt is None:
@@ -362,6 +410,23 @@ class TimbreControlModel(nn.Module):
 
         loss = F.mse_loss(v_pred.float(), v_target.float())
         return loss, {"loss": loss.item()}
+
+
+# --------------------------------------------------------------- backbone config
+
+def localize_text_conditioner(model_config, sa3_dir):
+    """Point the t5gemma conditioner at the copy bundled with the backbone directory.
+
+    The released config names ``repo_id: stabilityai/stable-audio-3-medium`` with
+    ``subfolder: t5gemma-b-b-ul2``, which needs a Hub download; the base repo ships the same
+    subfolder, so load it from ``sa3_dir`` when it is there (works offline).
+    """
+    import os
+    for c in model_config.get("model", {}).get("conditioning", {}).get("configs", []):
+        cc = c.get("config", {})
+        if c.get("type") == "t5gemma" and os.path.isdir(os.path.join(sa3_dir, cc.get("subfolder", ""))):
+            cc["model_path"] = str(sa3_dir)
+    return model_config
 
 
 # ------------------------------------------------------------------ weight I/O

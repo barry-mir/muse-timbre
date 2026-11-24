@@ -64,6 +64,8 @@ def load_sa3(device, sa3_dir):
 
     with open(f"{sa3_dir}/model_config.json") as f:
         model_config = json.load(f)
+    from musetimbre.model import localize_text_conditioner
+    model_config = localize_text_conditioner(model_config, sa3_dir)
     model = create_model_from_config(model_config)
     sd = load_ckpt_state_dict(f"{sa3_dir}/model.safetensors")
     model.load_state_dict(sd, strict=False)
@@ -109,6 +111,8 @@ def build_argparser():
     parser.add_argument("--grad-accum", type=int, default=None,
                         help="override gradient accumulation steps")
     parser.add_argument("--num-workers", type=int, default=4, help="dataloader workers per rank")
+    parser.add_argument("--warmup-steps", type=int, default=None, help="override warmup steps")
+    parser.add_argument("--save-every", type=int, default=None, help="override checkpoint interval")
     return parser
 
 
@@ -118,7 +122,8 @@ def main():
 
     cfg = DEFAULT_CFG.copy()
     for key, value in (("total_steps", args.total_steps), ("batch_size", args.batch_size),
-                       ("grad_accum", args.grad_accum)):
+                       ("grad_accum", args.grad_accum), ("warmup_steps", args.warmup_steps),
+                       ("save_every", args.save_every)):
         if value is not None:
             cfg[key] = value
 
@@ -166,10 +171,11 @@ def main():
             continue
         (encoder_params if "timbre_encoder" in name else adapter_params).append(p)
 
-    optimizer = torch.optim.AdamW([
-        {"params": adapter_params, "lr": cfg["lr"]},
-        {"params": encoder_params, "lr": cfg["lr_timbre_encoder"]},
-    ], weight_decay=cfg["weight_decay"])
+    groups = [{"params": adapter_params, "lr": cfg["lr"]}]
+    if encoder_params:   # a frozen timbre encoder (CLAP2) has none
+        groups.append({"params": encoder_params, "lr": cfg["lr_timbre_encoder"]})
+    optimizer = torch.optim.AdamW(groups, weight_decay=cfg["weight_decay"])
+    has_encoder_group = len(groups) > 1
 
     if is_main:
         logger.info(f"Trainable params: {sum(p.numel() for p in adapter_params) + sum(p.numel() for p in encoder_params):,} "
@@ -208,6 +214,8 @@ def main():
                             for k, v in base_cond_inputs.items()}
 
     step = 0
+    if args.resume is None and (ckpt_dir / "checkpoint_latest.pt").exists():
+        args.resume = str(ckpt_dir / "checkpoint_latest.pt")   # auto-resume an interrupted run
     if args.resume:
         # Load onto the CPU first: mapping straight to the GPU would copy the whole
         # checkpoint on top of the already-resident model and can exhaust VRAM.
@@ -299,7 +307,7 @@ def main():
             lr = get_lr(step, cfg["warmup_steps"], cfg["total_steps"], cfg["lr"])
             for pg in optimizer.param_groups:
                 pg["lr"] = (lr * (cfg["lr_timbre_encoder"] / cfg["lr"])
-                            if pg is optimizer.param_groups[-1] else lr)
+                            if has_encoder_group and pg is optimizer.param_groups[-1] else lr)
 
             optimizer.step()
             optimizer.zero_grad()
